@@ -12,22 +12,42 @@
  * Keto auth middleware for Koa
  */
 
-const keto = require('@ory/keto-client');
+const { RelationshipApi, PermissionApi } = require('@ory/keto-client');
 
-module.exports.createAuthMiddleware = (userIdHeader, oryKetoReadUrl) => {
-    const oryKetoReadApi = new keto.ReadApi(undefined, oryKetoReadUrl);
+module.exports.createAuthMiddleware = (userIdHeader, oryKetoReadUrl, oryKratosReadUrl) => {
+    const RelationshipApiObj = new RelationshipApi(undefined, oryKetoReadUrl);
+    const PermissionApiObj = new PermissionApi(undefined, oryKetoReadUrl);
 
-    const opts = {
-        validateStatus: () => true,
-    };
+    // const opts = {
+    //     validateStatus: () => true,
+    // };
+
+    // const getParticipantsByUserId = async (userId) => {
+    //     const response = await oryKetoReadApi.getRelationTuples('participant', undefined, 'member', userId);
+    //     return response.data.relation_tuples.map(({ object }) => object);
+    // };
 
     const getParticipantsByUserId = async (userId) => {
-        const response = await oryKetoReadApi.getRelationTuples('participant', undefined, 'member', userId);
+        const response = await RelationshipApiObj.getRelationships({
+            namespace: "participant",
+            relation: "member",
+            subjectId: userId,
+        });
         return response.data.relation_tuples.map(({ object }) => object);
     };
 
+    // const canAccessReport = async (userId, obj) => {
+    //     const response = await oryKetoReadApi.getCheck('permission', obj, 'granted', userId, opts);
+    //     return response.data.allowed;
+    // };
+
     const canAccessReport = async (userId, obj) => {
-        const response = await oryKetoReadApi.getCheck('permission', obj, 'granted', userId, opts);
+        const response = await PermissionApiObj.checkPermission({
+            namespace: "permission",
+            object: obj,
+            relation: "granted",
+            subjectId: userId,
+        });
         return response.data.allowed;
     };
 
@@ -37,7 +57,23 @@ module.exports.createAuthMiddleware = (userIdHeader, oryKetoReadUrl) => {
         .every(Boolean);
 
     return async (ctx, next) => {
-        const userId = ctx.req.headers[userIdHeader];
+        // Call kraots whoami api using session token to authenticate the user
+        const token = ctx.req.headers[userIdHeader];
+        const authResp = await fetch(`${oryKratosReadUrl}/sessions/whoami`, {
+            headers: {
+                cookie: token
+            }
+        });
+
+        if (!authResp.ok) {
+            ctx.response.status = 401;
+            return;
+        }
+
+        const data = await authResp.json();
+        const userId = data.identity?.traits?.subject;
+
+        // Then call Keto apis to check the permissions
         ctx.state.participants = await getParticipantsByUserId(userId);
         const obj = ctx.state.reportData.pathMap[ctx.request.URL.pathname.toLowerCase()];
         if (!obj) {

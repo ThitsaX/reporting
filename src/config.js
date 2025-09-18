@@ -12,8 +12,9 @@ require('dotenv/config');
 const env = require('env-var');
 
 module.exports = {
-    oryKetoReadUrl: env.get('ORY_KETO_READ_URL').asUrlString(),
-    userIdHeader: env.get('USER_ID_HEADER').default('x-user').asString(),
+    oryKetoReadUrl: env.get('ORY_KETO_READ_URL').default('http://localhost:4466').asUrlString(),
+    oryKratosReadUrl: env.get('ORY_KRATOS_READ_URL').default('http://localhost:4433').asUrlString(),
+    userIdHeader: env.get('USER_ID_HEADER').default('cookie').asString(),
     port: env.get('PORT').default('3000').asPortNumber(),
     templatesDir: env.get('TEMPLATES_DIR').asString(),
     database: {

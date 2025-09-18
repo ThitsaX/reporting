@@ -49,14 +49,14 @@ const createApp = async ({ db, logger, config }) => {
         } catch (err) {
             ctx.state.logger.push({ err }).log('Error handling request');
             ctx.response.status = err.statusCode || err.status || 500;
-            ctx.response.body = JSON.stringify(err);
+            ctx.response.body = err.message || 'Internal server error';
             ctx.response.set('content-type', 'application/json');
         }
         ctx.state.logger.log('Handled request');
     });
 
     if (config.oryKetoReadUrl) {
-        app.use(createAuthMiddleware(config.userIdHeader, config.oryKetoReadUrl));
+        app.use(createAuthMiddleware(config.userIdHeader, config.oryKetoReadUrl, config.oryKratosReadUrl));
     }
 
     const operator = new ReportingOperator(reportData);
