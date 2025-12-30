@@ -2,12 +2,16 @@
 # copy this CI workflow. This is because the artifact is built outside of the docker runtime and
 # copied in to the docker runtime. See below for reasons/details.
 name: Publish image
- 
+
 on:
   # The build will run on all of the following event types. Semver tagged images will be published
   # for a release. A long sha image will be published for every push.
   release:
     types: [published]
+  push:
+    branches:
+    - 'develop/main'
+
 jobs:
   main:
     runs-on: ubuntu-latest
